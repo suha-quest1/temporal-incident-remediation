@@ -1,0 +1,1 @@
+docker run --rm -p 7233:7233 temporalio/auto-setup:1.24

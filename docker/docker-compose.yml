@@ -1,0 +1,38 @@
+services:
+  temporal:
+    image: temporalio/auto-setup:1.24
+    ports: ["7233:7233"]
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    ports: ["8080:8080"]
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: temporal
+
+  worker:
+    build: 
+      context: ..
+      dockerfile: temporal/Dockerfile
+    depends_on: [temporal, postgres]
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+
+  api-server:
+    build: 
+      context: ..
+      dockerfile: api/Dockerfile
+    ports: ["3000:3000"]
+    depends_on: [temporal]
+    environment:
+      - TEMPORAL_HOST=temporal:7233
