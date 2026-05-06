@@ -1,4 +1,5 @@
 from temporalio import activity
+import json
 from temporal.logger import logger
 from data.error_map import ERROR_MAP
 
@@ -19,3 +20,28 @@ async def classifyIncident(err_msg: str) -> dict:
     return { "incident_type": "Unknown", "severity": "P2"}
             
     
+@activity.defn
+async def fetchRunbook(runbook_tags: list[str])-> str:
+    logger.info("Fetching solutions from runbook")
+
+    solution=[]
+
+    with open("./runbooks/error_handling.json", "r") as f:
+        runbook=json.load(f)
+        for item in runbook_tags:
+            if item in runbook:
+                solution.extend(runbook[item]["solution"])
+    return " ".join(solution)
+
+
+'''Produces commands (source: some fake text file), pipeline puts them into exec_commands.sh?? no, just ''' 
+@activity.defn
+async def generate_plan(incident_type: str, runbook: str, severity: str) -> list[str]:
+
+    logger.info(f"Generating remediation plan for {incident_type}")
+
+    with open("./fakes/fake_llm_commands.txt", "r") as f:
+        commands = f.readlines()
+
+    return [cmd.strip() for cmd in commands if cmd.strip()]
+

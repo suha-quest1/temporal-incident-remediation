@@ -1,0 +1,38 @@
+{
+    "type1": {
+        "incident_type": "Catastrophic Skill Issue",
+        "severity": "P1",
+        "solution": [
+            "Take a deep breath",
+            "Question your life choices",
+            "Restart the service",
+            "Restart yourself",
+            "Throw yourself off a cliff"
+        ]
+
+    },
+
+    "type2": {
+        "incident_type": "Works On My Machine Syndrome",
+        "severity": "P2",
+        "solution": [
+            "Blame Docker",
+            "Blame DNS",
+            "Blame Temporal",
+            "Realize it was a typo",
+            "Quietly fix it"
+        ]
+    },
+
+    "type3": {
+        "incident_type": "Production Fire",
+        "severity": "P3",
+        "solution": [
+            "Say 'interesting...' in Slack",
+            "Open 37 tabs",
+            "Check logs aggressively",
+            "Deploy a rollback",
+            "Pretend you knew the issue immediately"
+        ]
+    }
+}

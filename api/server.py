@@ -4,6 +4,17 @@ import os
 from temporalio.client import Client
 
 from temporal.workflows import IncidentWorkflow
+from data.data_class import IncidentDetails
+
+test_incident= IncidentDetails(
+    alertId="alert-001",
+    severity="critical",
+    service="backend-api",
+    errorMessage="OOMKilled pod backend-api",
+    runbookTags=["kubernetes", "memory", "oom"],
+)
+
+
 
 async def main():
 
@@ -12,8 +23,8 @@ async def main():
 
     result= await client.execute_workflow(
         IncidentWorkflow.run,
-         "OOMKilled pod backend-api",
-        id="incident-001",
+        test_incident,
+        id="incident-002",
         task_queue="incident-task-queue",
     )
 
