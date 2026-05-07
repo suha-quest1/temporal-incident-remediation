@@ -8,7 +8,8 @@ import os
 from temporal.logger import logger #py logger
 
 from temporal.workflows import IncidentWorkflow
-from temporal.activities import classifyIncident, fetchRunbook, generate_plan
+from temporal.sub_workflow import ExecuteStepWorkflow
+from temporal.activities import classifyIncident, fetchRunbook, generate_plan, rollback_changes, verify_resolution, execute_step
 
 
 async def main():
@@ -19,8 +20,8 @@ async def main():
     worker = Worker(
         client,
         task_queue="incident-task-queue",
-        workflows=[IncidentWorkflow],
-        activities=[classifyIncident, fetchRunbook, generate_plan]
+        workflows=[IncidentWorkflow, ExecuteStepWorkflow],
+        activities=[classifyIncident, fetchRunbook, generate_plan, rollback_changes, verify_resolution, execute_step]
     )
 
     logger.info("Worker started")

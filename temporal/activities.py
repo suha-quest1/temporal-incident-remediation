@@ -45,3 +45,47 @@ async def generate_plan(incident_type: str, runbook: str, severity: str) -> list
 
     return [cmd.strip() for cmd in commands if cmd.strip()]
 
+'''fake activity for the child workflow thing:'''
+@activity.defn
+async def execute_step(command: str) -> dict:
+
+    logger.info(f"Executing command: {command}")
+
+    if "restart" in command:
+        raise Exception("Mock Kubernetes restart failure")
+
+    return {
+        "command": command,
+        "status": "success",
+        "output": f"would execute: {command}"
+    }
+
+
+
+'''rollback'''
+@activity.defn
+async def rollback_changes(commands: list[str]) -> list[str]:
+
+    logger.info("Rolling back commands")
+    reversed_cmds = list(reversed(commands))
+
+    rollback_log = []
+
+    for cmd in reversed_cmds:
+        rollback_cmd = f"rollback: {cmd}"
+        logger.info(rollback_cmd)
+        rollback_log.append(rollback_cmd)
+
+    return rollback_log
+
+
+'''dummy for the health checking via http'''
+@activity.defn
+async def verify_resolution(service: str) -> dict:
+
+    logger.info(f"Verifying health for {service}")
+
+    return {
+        "service": service,
+        "healthy": True,
+    }

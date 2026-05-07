@@ -7,3 +7,8 @@ class IncidentDetails:
     service: str
     errorMessage: str 
     runbookTags: list[str]
+
+@dataclass
+class OverrideSignal:
+    action: str
+    engineer: str

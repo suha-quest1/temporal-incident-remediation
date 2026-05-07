@@ -4,7 +4,7 @@ import os
 from temporalio.client import Client
 
 from temporal.workflows import IncidentWorkflow
-from data.data_class import IncidentDetails
+from data.data_class import IncidentDetails, OverrideSignal
 
 test_incident= IncidentDetails(
     alertId="alert-001",
@@ -14,7 +14,21 @@ test_incident= IncidentDetails(
     runbookTags=["kubernetes", "memory", "oom"],
 )
 
+async def send_rollback_signal():
 
+    temporal_host = os.getenv("TEMPORAL_HOST", "localhost:7233")
+    client = await Client.connect(temporal_host)
+    handle = client.get_workflow_handle("incident-001") #!!!!
+
+    await handle.signal(
+        IncidentWorkflow.human_override,
+        OverrideSignal(
+            action="rollback",
+            engineer="alice"
+        )
+    )
+
+    print("Rollback signal sent")
 
 async def main():
 
@@ -24,11 +38,13 @@ async def main():
     result= await client.execute_workflow(
         IncidentWorkflow.run,
         test_incident,
-        id="incident-002",
+        id="incident-003",
         task_queue="incident-task-queue",
     )
 
     print(result)
+
+
 
 
 if __name__ == "__main__":
