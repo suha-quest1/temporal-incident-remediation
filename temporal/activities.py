@@ -45,21 +45,31 @@ async def generate_plan(incident_type: str, runbook: str, severity: str) -> list
 
     return [cmd.strip() for cmd in commands if cmd.strip()]
 
-'''fake activity for the child workflow thing:'''
+''' child workflow: using mock k8'''
 @activity.defn
 async def execute_step(command: str) -> dict:
 
     logger.info(f"Executing command: {command}")
 
-    if "restart" in command:
-        raise Exception("Mock Kubernetes restart failure")
+    url = "http://mock-k8s:8090/execute"
+
+    async with httpx.AsyncClient() as client:
+
+        response = await client.post(
+            url,
+            json={"command": command},
+        )
+
+        result = response.json()
+
+    if result["status"] == "failed":
+        raise Exception(result["output"])
 
     return {
         "command": command,
-        "status": "success",
-        "output": f"would execute: {command}"
+        "status": result["status"],
+        "output": result["output"],
     }
-
 
 
 '''rollback'''
