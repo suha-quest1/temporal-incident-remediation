@@ -5,34 +5,45 @@ services:
     environment:
       - DB=postgres12
       - DB_PORT=5432
-      - POSTGRES_USER=postgres
+      - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgres
 
   temporal-ui:
     image: temporalio/ui:latest
-    ports: ["8080:8080"]
+    ports: ["8081:8080"]
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
-
   postgres:
     image: postgres:16-alpine
     environment:
+      POSTGRES_USER: temporal
       POSTGRES_PASSWORD: temporal
 
   worker:
     build: 
-      context: ..
+      context: .
       dockerfile: temporal/Dockerfile
     depends_on: [temporal, postgres]
     environment:
       - TEMPORAL_HOST=temporal:7233
+    restart: unless-stopped
+    volumes:
+      - ./output:/app/output
 
   api-server:
     build: 
-      context: ..
+      context: .
       dockerfile: api/Dockerfile
-    ports: ["3000:3000"]
+    ports: ["8000:8000"]
     depends_on: [temporal]
     environment:
       - TEMPORAL_HOST=temporal:7233
+
+  mock-service:
+    build:
+      context: .
+      dockerfile: mock-service/Dockerfile
+
+    ports:
+      - "8082:8080"
