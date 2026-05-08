@@ -8,6 +8,8 @@ import httpx
 from temporal.logger import logger
 from temporal.llm_client import get_groq_client
 
+from datetime import datetime
+
 # ── Paths anchored to this file, not the CWD ────────────────────────────────
 _HERE = Path(__file__).parent.parent          # /app  (one level above temporal/)
 _RUNBOOK_PATH = _HERE / "runbooks" / "error_handling.json"
@@ -205,6 +207,9 @@ async def generate_postmortem(
     verification: dict,
     override_action: str | None,
 ) -> str:
+    
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
     logger.info("[generate_postmortem] Generating for incident: %s", incident_id)
 
     # Build a compact summary to keep the prompt small
@@ -213,16 +218,72 @@ async def generate_postmortem(
     )
     plan_summary = "; ".join(plan[:5])
 
-    prompt = (
-        "Write a short Incident Postmortem in markdown with these sections: "
-        "Summary, Root Cause, Actions Taken, Verification, Lessons Learned.\n\n"
-        f"Incident ID: {incident_id}\n"
-        f"Type: {classification.get('incident_type')} | Severity: {classification.get('severity')}\n"
-        f"Plan: {plan_summary}\n"
-        f"Execution: {exec_summary}\n"
-        f"Healthy after fix: {verification.get('healthy')}\n"
-        f"Override: {override_action or 'none'}"
-    )
+    prompt = f"""
+You are generating a REAL DevOps incident report.
+
+STRICT RULES:
+- Use concise operational language
+- NO fluff
+- NO storytelling
+- NO explanations unless directly supported by input
+- NO placeholder text like [Date], [Time], or <incident_id>
+- DO NOT invent causes like memory leaks unless explicitly provided
+- DO NOT mention things not present in the incident data
+- Keep sentences short and direct
+- Output VALID markdown ONLY
+
+OUTPUT FORMAT (follow EXACTLY):
+
+# Incident Report — {incident_id}
+
+Date: {timestamp}
+
+Severity: {classification.get("severity")}
+Issue Type: {classification.get("incident_type")}
+
+## Actions
+- ...
+- ...
+
+## Result
+- ...
+
+## Follow-Up
+- ...
+- ...
+
+INCIDENT DATA:
+
+Incident ID:
+{incident_id}
+
+Timestamp:
+{timestamp}
+
+Incident Type:
+{classification.get("incident_type")}
+
+Severity:
+{classification.get("severity")}
+
+Remediation Plan:
+{plan_summary}
+
+Execution Results:
+{exec_summary}
+
+Healthy After Fix:
+{verification.get("healthy")}
+
+Override Action:
+{override_action or "none"}
+
+Remember:
+- concise
+- operational
+- factual only
+- no hallucinated root causes
+"""
 
     logger.info("[Groq] generate_postmortem: sending request")
     try:

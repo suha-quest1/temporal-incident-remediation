@@ -92,6 +92,8 @@ services:
       - temporal
     environment:
       - TEMPORAL_HOST=temporal:7233
+    volumes:
+      - ./output:/app/output
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 5s
@@ -106,3 +108,11 @@ services:
     depends_on:
       - api-server
       - worker
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    ports: ["3000:80"]
+    depends_on:
+      - api-server
