@@ -1,3 +1,5 @@
 temporalio
 aiohttp
 httpx
+groq
+python-dotenv

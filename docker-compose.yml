@@ -1,66 +1,108 @@
 services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: temporal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   temporal:
     image: temporalio/auto-setup:1.24
     ports: ["7233:7233"]
     environment:
       - DB=postgres12
       - DB_PORT=5432
-      - POSTGRES_USER=temporal
+      - POSTGRES_USER=postgres
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "temporal:7233", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
 
   temporal-ui:
     image: temporalio/ui:latest
     ports: ["8081:8080"]
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: temporal
-      POSTGRES_PASSWORD: temporal
+    depends_on:
+      - temporal
 
-  worker:
-    build: 
-      context: .
-      dockerfile: temporal/Dockerfile
-    depends_on: [temporal, postgres]
-    environment:
-      - TEMPORAL_HOST=temporal:7233
-    restart: unless-stopped
-    volumes:
-      - ./output:/app/output
-
-  api-server:
-    build: 
-      context: .
-      dockerfile: api/Dockerfile
-    ports: ["8000:8000"]
-    depends_on: [temporal]
-    environment:
-      - TEMPORAL_HOST=temporal:7233
+  # ── Mock services ───────────────────────────────────────────────────────────
 
   mock-service:
     build:
       context: .
       dockerfile: mock-service/Dockerfile
+    ports: ["8082:8080"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
-    ports:
-      - "8082:8080"
-    
   mock-k8s:
     build:
       context: .
       dockerfile: mock-k8s/Dockerfile
+    ports: ["8090:8090"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8090/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
-    ports:
-      - "8090:8090"
+  # ── Application ─────────────────────────────────────────────────────────────
+
+  worker:
+    build:
+      context: .
+      dockerfile: temporal/Dockerfile
+    depends_on:
+      - temporal
+      - postgres
+      - mock-service
+      - mock-k8s
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    restart: unless-stopped
+    volumes:
+      - ./output:/app/output
+      - ./runbooks:/app/runbooks
+
+  api-server:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    ports: ["8000:8000"]
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   alertmanager-stub:
     build:
       context: .
       dockerfile: alertmanager/Dockerfile
-
     depends_on:
       - api-server
       - worker

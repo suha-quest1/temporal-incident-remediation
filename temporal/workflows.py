@@ -5,7 +5,14 @@ from temporalio.common import RetryPolicy
 
 #importing activities:
 with workflow.unsafe.imports_passed_through():
-    from  temporal.activities import classifyIncident, fetchRunbook, generate_plan, rollback_changes, verify_resolution, generate_postmortem
+    from temporal.activities import (
+        classifyIncident,
+        fetchRunbook,
+        generate_plan,
+        rollback_changes,
+        verify_resolution,
+        generate_postmortem,
+    )
     from temporal.sub_workflow import ExecuteStepWorkflow
 
 
@@ -29,18 +36,18 @@ class IncidentWorkflow:
             )
         )
 
-        runbook= await workflow.execute_activity(
+        # Pass incident_type as first tag so runbook lookup is reliable
+        runbook_lookup_tags = [classify["incident_type"]] + incident.runbookTags
+        runbook = await workflow.execute_activity(
             fetchRunbook,
-            incident.runbookTags,
-            start_to_close_timeout=timedelta(seconds=30)
-
+            runbook_lookup_tags,
+            start_to_close_timeout=timedelta(seconds=15),
         )
 
-        plan= await workflow.execute_activity(
+        plan = await workflow.execute_activity(
             generate_plan,
             args=[classify["incident_type"], runbook, classify["severity"]],
-            start_to_close_timeout=timedelta(seconds=30)
-
+            start_to_close_timeout=timedelta(seconds=45),
         )
 
 
@@ -51,7 +58,7 @@ class IncidentWorkflow:
             result = await workflow.execute_child_workflow(
                 ExecuteStepWorkflow.run,
                 command,
-                id=f"{incident.alertId}-step-{idx}",
+                id=f"{incident.alertId}-step-{idx}-{workflow.info().run_id[:6]}",
                 task_queue="incident-task-queue",
             )
 
@@ -100,7 +107,7 @@ class IncidentWorkflow:
                 verification,
                 self.override_action,
             ],
-            start_to_close_timeout=timedelta(seconds=30),
+            start_to_close_timeout=timedelta(seconds=90),
         )
 
         return {"classification": classify,

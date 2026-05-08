@@ -1,38 +1,38 @@
 {
-    "type1": {
-        "incident_type": "Catastrophic Skill Issue",
-        "severity": "P1",
+    "OOM": {
+        "tags": ["oom", "memory", "kubernetes", "oomkilled"],
         "solution": [
-            "Take a deep breath",
-            "Question your life choices",
-            "Restart the service",
-            "Restart yourself",
-            "Throw yourself off a cliff"
-        ]
-
-    },
-
-    "type2": {
-        "incident_type": "Works On My Machine Syndrome",
-        "severity": "P2",
-        "solution": [
-            "Blame Docker",
-            "Blame DNS",
-            "Blame Temporal",
-            "Realize it was a typo",
-            "Quietly fix it"
+            "kubectl top pods -n default",
+            "kubectl describe pod -l app=backend-api",
+            "kubectl set resources deployment backend-api --limits=memory=512Mi",
+            "kubectl rollout restart deployment/backend-api"
         ]
     },
-
-    "type3": {
-        "incident_type": "Production Fire",
-        "severity": "P3",
+    "networking": {
+        "tags": ["network", "connection", "timeout", "dns"],
         "solution": [
-            "Say 'interesting...' in Slack",
-            "Open 37 tabs",
-            "Check logs aggressively",
-            "Deploy a rollback",
-            "Pretend you knew the issue immediately"
+            "kubectl get svc -n default",
+            "kubectl describe svc backend-api",
+            "kubectl get networkpolicies -n default",
+            "kubectl rollout restart deployment/backend-api"
+        ]
+    },
+    "database": {
+        "tags": ["database", "db", "postgres", "mysql", "deadlock"],
+        "solution": [
+            "kubectl get pods -l app=postgres",
+            "kubectl logs -l app=postgres --tail=50",
+            "kubectl exec -it postgres-pod -- psql -c 'SELECT * FROM pg_stat_activity'",
+            "kubectl rollout restart deployment/postgres"
+        ]
+    },
+    "disk": {
+        "tags": ["disk", "storage", "space", "volume", "pvc"],
+        "solution": [
+            "kubectl get pvc -n default",
+            "kubectl describe pvc backend-pvc",
+            "kubectl exec -it backend-pod -- df -h",
+            "kubectl patch pvc backend-pvc -p '{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"20Gi\"}}}}'"
         ]
     }
 }
