@@ -1,7 +1,6 @@
 .env
 .pytest_cache/
 
-.env
 .venv/
 venv/
 
