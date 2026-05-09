@@ -1,8 +1,9 @@
 # DevOps: Autonomous Incident Triage & Remediation Orchestrator
 
 
-This project is an autonomous Dev-Ops system that logs incidents and automatically triggers response workflows for it. 
-
+This project is an autonomous Dev-Ops system that classifies alerts, retrieves runbooks, generates remediation steps, and executes them against a mock Kubernetes cluster. 
+Workflow automatically closes after 30 minutes- but allows human override.
+The workflow verifies recovery, supports rollback handling, and generates automated postmortem reports from execution history.
 
 ## Running the code:
 
