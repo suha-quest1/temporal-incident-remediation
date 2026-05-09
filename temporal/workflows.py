@@ -1,17 +1,17 @@
+import asyncio
 from datetime import timedelta
 from temporalio import workflow
 from temporal.data.data_class import IncidentDetails, OverrideSignal
 from temporalio.common import RetryPolicy
 
-#importing activities:
 with workflow.unsafe.imports_passed_through():
     from temporal.activities import (
-        classifyIncident,
-        fetchRunbook,
-        generate_plan,
-        rollback_changes,
-        verify_resolution,
-        generate_postmortem,
+        ClassifyIncident,
+        FetchRunbook,
+        GeneratePlan,
+        RollbackChanges,
+        VerifyResolution,
+        GeneratePostmortem,
     )
     from temporal.sub_workflow import ExecuteStepWorkflow
 
@@ -25,31 +25,33 @@ class IncidentWorkflow:
 
     @workflow.run
     async def run(self, incident: IncidentDetails) -> dict:
+        common_retry = RetryPolicy(
+            initial_interval=timedelta(seconds=1),
+            maximum_attempts=3,
+        )
 
-        classify= await workflow.execute_activity(
-            classifyIncident,
+        classify = await workflow.execute_activity(
+            ClassifyIncident,
             incident.errorMessage,
             start_to_close_timeout=timedelta(seconds=30),
-            retry_policy=RetryPolicy(
-                initial_interval=timedelta(seconds=1),
-                maximum_attempts=3,
-            )
+            retry_policy=common_retry,
         )
 
         # Pass incident_type as first tag so runbook lookup is reliable
         runbook_lookup_tags = [classify["incident_type"]] + incident.runbookTags
         runbook = await workflow.execute_activity(
-            fetchRunbook,
+            FetchRunbook,
             runbook_lookup_tags,
             start_to_close_timeout=timedelta(seconds=15),
+            retry_policy=common_retry,
         )
 
         plan = await workflow.execute_activity(
-            generate_plan,
+            GeneratePlan,
             args=[classify["incident_type"], runbook, classify["severity"]],
             start_to_close_timeout=timedelta(seconds=45),
+            retry_policy=common_retry,
         )
-
 
         step_results = []
 
@@ -58,47 +60,56 @@ class IncidentWorkflow:
             result = await workflow.execute_child_workflow(
                 ExecuteStepWorkflow.run,
                 command,
-                id=f"{incident.alertId}-step-{idx}-{workflow.info().run_id[:6]}",
-                task_queue="incident-task-queue",
+                id=f"{incident.alertId}-step-{idx}-{workflow.uuid4().hex}",
+                task_queue=workflow.info().task_queue,
             )
 
             step_results.append(result)
 
-        workflow.logger.info("Workflow entering wait state for human override (30 minutes max)...")
-        override_received = await workflow.wait_condition(
-        lambda: self.override_action is not None,
-        timeout=timedelta(minutes=30),
-        )
+        workflow.logger.info("Waiting for human override (up to 30 mins)")
+        try:
+            await workflow.wait_condition(
+                lambda: self.override_action is not None,
+                timeout=timedelta(minutes=30),
+            )
+            override_received = True
+        except asyncio.TimeoutError:
+            override_received = False
 
         if override_received and self.override_action == "rollback":
             workflow.logger.info("Rollback signal received! Executing rollback.")
             rollback_result = await workflow.execute_activity(
-                rollback_changes,
+                RollbackChanges,
                 plan,
                 start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=common_retry,
             )
 
             workflow.logger.info("Executing verification after rollback.")
             verification = await workflow.execute_activity(
-                verify_resolution,
+                VerifyResolution,
                 incident.service,
                 start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=common_retry,
             )
 
         else:
-            workflow.logger.info(f"Proceeding without rollback. Override received: {override_received}, Action: {self.override_action}")
+            workflow.logger.info(
+                f"Proceeding. Override received: {override_received}, action: {self.override_action}"
+            )
             rollback_result = None
 
             workflow.logger.info("Executing verification without rollback.")
             verification = await workflow.execute_activity(
-                verify_resolution,
+                VerifyResolution,
                 incident.service,
                 start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=common_retry,
             )
 
         workflow.logger.info("Generating postmortem report...")
         postmortem_path = await workflow.execute_activity(
-            generate_postmortem,
+            GeneratePostmortem,
             args=[
                 incident.alertId,
                 classify,
@@ -108,22 +119,24 @@ class IncidentWorkflow:
                 self.override_action,
             ],
             start_to_close_timeout=timedelta(seconds=90),
+            retry_policy=common_retry,
         )
 
-        return {"classification": classify,
-                "runbooks": runbook,
-                "plan": plan,
-                 "execution_results": step_results,
-                 "rollback_result": rollback_result,
-                "verification": verification,
-                "override_action": self.override_action,
-                "postmortem_path": postmortem_path,}
-    
-    
+        return {
+            "classification": classify,
+            "runbooks": runbook,
+            "plan": plan,
+            "execution_results": step_results,
+            "rollback_result": rollback_result,
+            "verification": verification,
+            "override_action": self.override_action,
+            "postmortem_path": postmortem_path,
+        }
+
     @workflow.signal
-    async def human_override(self, override: OverrideSignal):
-        workflow.logger.info(f"Signal received: action={override.action}, engineer={override.engineer}")
+    async def humanOverride(self, override: OverrideSignal):
+        workflow.logger.info(
+            f"Signal received: action={override.action}, engineer={override.engineer}"
+        )
         self.override_action = override.action
         self.override_engineer = override.engineer
-    
-

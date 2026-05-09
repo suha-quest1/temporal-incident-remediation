@@ -11,13 +11,13 @@ const STATUS_CONFIG: Record<string, { label: string; dot: string; text: string; 
 }
 
 const PHASES = [
-  'classifyIncident',
-  'fetchRunbook',
-  'generatePlan',
-  'executeSteps',
-  'awaitOverride',
-  'verifyResolution',
-  'generatePostmortem',
+  'ClassifyIncident',
+  'FetchRunbook',
+  'GeneratePlan',
+  'ExecuteStepWorkflow',
+  'AwaitOverride',
+  'VerifyResolution',
+  'GeneratePostmortem',
 ]
 
 function inferPhase(result: WorkflowResult | null, status: string): number {
@@ -56,7 +56,13 @@ export default function StatusPanel({ workflowId }: Props) {
     const poll = async () => {
       try {
         const s = await getStatus(workflowId)
-        if (!cancelled) { setWfStatus(s); setError(null) }
+        if (!cancelled) {
+          setWfStatus(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(s)) return prev;
+            return s;
+          });
+          setError(null)
+        }
       } catch (e) {
         if (!cancelled) setError(String(e))
       }

@@ -1,21 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listIncidents, type WorkflowSummary } from '../api'
 
-const STATUS_DOT: Record<string, string> = {
-  RUNNING:   'bg-yellow-400 glow-running',
-  COMPLETED: 'bg-emerald-500',
-  FAILED:    'bg-red-500',
-  TIMED_OUT: 'bg-orange-400',
-  UNKNOWN:   'bg-slate-600 animate-pulse',
-}
-
-const SEV_COLOR: Record<string, string> = {
-  critical: 'text-red-400',
-  high:     'text-orange-400',
-  medium:   'text-yellow-400',
-  low:      'text-blue-400',
-}
-
 interface Props { activeId: string | null; onSelect: (id: string) => void }
 
 export default function IncidentList({ activeId, onSelect }: Props) {
@@ -25,7 +10,12 @@ export default function IncidentList({ activeId, onSelect }: Props) {
     const refresh = async () => {
       try {
         const res = await listIncidents()
-        setWorkflows(res.workflows)
+        setWorkflows(prev => {
+          if (JSON.stringify(prev) === JSON.stringify(res.workflows)) {
+            return prev;
+          }
+          return res.workflows;
+        })
       } catch { /* silent */ }
     }
     refresh()
@@ -34,50 +24,35 @@ export default function IncidentList({ activeId, onSelect }: Props) {
   }, [])
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0e131f] overflow-hidden">
-      <div className="px-5 py-3 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-          <span className="text-cyan-400">≡</span> Incidents
-        </span>
-        <span className="text-xs text-slate-600">{workflows.length} total</span>
+    <div className="border border-gray-300 bg-white">
+      <div className="p-2 border-b border-gray-300 font-bold bg-gray-100 flex justify-between">
+        <span>Incidents</span>
+        <span className="font-normal text-sm">{workflows.length} total</span>
       </div>
 
       {workflows.length === 0 ? (
-        <div className="p-6 text-center text-xs text-slate-700">No incidents yet</div>
+        <div className="p-4 text-center text-gray-500 text-sm">No incidents yet</div>
       ) : (
-        <ul className="divide-y divide-slate-800/60 max-h-80 overflow-y-auto">
+        <ul className="max-h-80 overflow-y-auto m-0 p-0 list-none">
           {workflows.map(wf => {
             const isActive = wf.workflow_id === activeId
-            const dotClass = STATUS_DOT[wf.status] ?? 'bg-slate-600'
-            const sevClass = SEV_COLOR[(wf as any).severity ?? ''] ?? 'text-slate-500'
-            const short = wf.workflow_id.split('-').slice(-1)[0] // last hex segment
+            const service = (wf as any).service || 'Unknown Service'
+            const severity = (wf as any).severity || ''
+            
             return (
               <li
                 key={wf.workflow_id}
                 onClick={() => onSelect(wf.workflow_id)}
-                className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors
-                  ${isActive ? 'bg-slate-800/70' : 'hover:bg-slate-900/60'}`}
+                className={`p-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 text-sm ${isActive ? 'bg-blue-50 font-bold' : ''}`}
               >
-                <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-mono text-slate-300 flex items-center gap-2">
-                    <span className={(wf as any).service ? 'text-slate-200' : ''}>{(wf as any).service ?? wf.workflow_id}</span>
-                    <span className="text-slate-700 font-sans">#{short}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className={`text-xs ${sevClass}`}>{(wf as any).severity ?? ''}</span>
-                    {wf.start_time && (
-                      <span className="text-xs text-slate-700">
-                        {new Date(wf.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
-                  </div>
+                <div className="flex justify-between items-center mb-1">
+                  <span>{service}</span>
+                  <span className="text-gray-500 text-xs">{wf.status}</span>
                 </div>
-                <span className={`text-xs shrink-0 ${
-                  wf.status === 'COMPLETED' ? 'text-emerald-600' :
-                  wf.status === 'RUNNING' ? 'text-yellow-600' :
-                  wf.status === 'FAILED' ? 'text-red-600' : 'text-slate-600'
-                }`}>{wf.status}</span>
+                <div className="text-gray-600 text-xs">
+                  {severity && <span className="mr-2 uppercase">{severity}</span>}
+                  <span className="truncate" title={wf.workflow_id}>{wf.workflow_id.substring(0, 18)}...</span>
+                </div>
               </li>
             )
           })}

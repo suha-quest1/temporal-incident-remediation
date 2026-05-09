@@ -33,7 +33,6 @@ async def fetchRunbook(runbook_tags: list[str])-> str:
                 solution.extend(runbook[item]["solution"])
     return " ".join(solution)
 
-
 '''Produces commands (source: some fake text file), pipeline puts them into exec_commands.sh?? no, just ''' 
 @activity.defn
 async def generate_plan(incident_type: str, runbook: str, severity: str) -> list[str]:
@@ -71,7 +70,6 @@ async def execute_step(command: str) -> dict:
         "output": result["output"],
     }
 
-
 '''rollback'''
 @activity.defn
 async def rollback_changes(commands: list[str]) -> list[str]:
@@ -87,7 +85,6 @@ async def rollback_changes(commands: list[str]) -> list[str]:
         rollback_log.append(rollback_cmd)
 
     return rollback_log
-
 
 '''dummy for the health checking via http'''
 @activity.defn
@@ -108,7 +105,6 @@ async def verify_resolution(service: str) -> dict:
         "healthy": data["status"] == "healthy",
         "response": data,
     }
-
 
 '''temporary postmortem report'''
 @activity.defn

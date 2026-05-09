@@ -3,15 +3,12 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Mock Kubernetes API")
 
-
 class CommandRequest(BaseModel):
     command: str
-
 
 # Commands that contain these strings will simulate transient failure
 # (but NOT "restart" — rollout restarts are valid remediation!)
 FAIL_PATTERNS = ["delete --force", "drain --force"]
-
 
 @app.post("/execute")
 async def execute(req: CommandRequest):
@@ -28,7 +25,6 @@ async def execute(req: CommandRequest):
         "status": "success",
         "output": f"mock-kubectl executed: {command}",
     }
-
 
 @app.get("/health")
 async def health():

@@ -8,13 +8,13 @@ from temporal.logger import logger
 from temporal.workflows import IncidentWorkflow
 from temporal.sub_workflow import ExecuteStepWorkflow
 from temporal.activities import (
-    classifyIncident,
-    fetchRunbook,
-    generate_plan,
-    execute_step,
-    rollback_changes,
-    verify_resolution,
-    generate_postmortem,
+    ClassifyIncident,
+    FetchRunbook,
+    GeneratePlan,
+    ExecuteStep,
+    RollbackChanges,
+    VerifyResolution,
+    GeneratePostmortem,
 )
 
 TEMPORAL_HOST = os.getenv("TEMPORAL_HOST", "localhost:7233")
@@ -31,11 +31,17 @@ async def main():
             logger.info("[worker] Connected to Temporal (attempt %d)", attempt)
             break
         except Exception as e:
-            logger.warning("[worker] Temporal not ready (attempt %d): %s — retrying in 3s", attempt, e)
+            logger.warning(
+                "[worker] Temporal not ready (attempt %d): %s — retrying in 3s",
+                attempt,
+                e,
+            )
             await asyncio.sleep(3)
 
     if client is None:
-        logger.error("[worker] Could not connect to Temporal after 20 attempts. Exiting.")
+        logger.error(
+            "[worker] Could not connect to Temporal after 20 attempts. Exiting."
+        )
         return
 
     worker = Worker(
@@ -43,13 +49,13 @@ async def main():
         task_queue="incident-task-queue",
         workflows=[IncidentWorkflow, ExecuteStepWorkflow],
         activities=[
-            classifyIncident,
-            fetchRunbook,
-            generate_plan,
-            execute_step,
-            rollback_changes,
-            verify_resolution,
-            generate_postmortem,
+            ClassifyIncident,
+            FetchRunbook,
+            GeneratePlan,
+            ExecuteStep,
+            RollbackChanges,
+            VerifyResolution,
+            GeneratePostmortem,
         ],
     )
 

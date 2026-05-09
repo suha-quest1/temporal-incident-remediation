@@ -21,7 +21,7 @@ async def send_rollback_signal():
     handle = client.get_workflow_handle("incident-001") #!!!!
 
     await handle.signal(
-        IncidentWorkflow.human_override,
+        IncidentWorkflow.humanOverride,
         OverrideSignal(
             action="rollback",
             engineer="alice"
@@ -43,9 +43,6 @@ async def main():
     )
 
     print(result)
-
-
-
 
 if __name__ == "__main__":
     asyncio.run(main())

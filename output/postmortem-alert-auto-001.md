@@ -1,19 +1,46 @@
 # Incident Report — alert-auto-001
 
+Date: 2026-05-09 08:01:03 UTC
+
 Severity: P1
-Service Issue: OOM
+Issue Type: OOM
 
 ## Actions
-- Ran `kubectl top pods -n default` to identify the problematic pod
-- Ran `kubectl describe pod -l app=backend-api` to gather more information
-- Ran `kubectl set resources deployment backend-api --limits=memory=512Mi` to adjust resource limits
-- Ran `kubectl rollout restart deployment/backend-api` to restart the deployment
+- Run `kubectl top pods -n default` to identify resource utilization
+- Run `kubectl describe pod -l app=backend-api` to gather pod information
+- Update `deployment backend-api` resource limits to 512Mi
+- Restart `deployment backend-api` using `kubectl rollout restart deployment/backend-api`
 
 ## Result
-- Successfully identified and mitigated the OOM issue
-- Deployment was restarted and is now running within the new resource limits
+- OOM (Out of Memory) error resolved
+- `deployment backend-api` restarted successfully
 
 ## Follow-Up
-- Conduct a review of the resource limits to prevent similar issues in the future
-- Consider implementing monitoring to detect and alert on high memory usage
-- Update the incident response plan to include OOM as a potential cause and the corresponding actions.
+- Monitor resource utilization for `deployment backend-api`
+- Review `deployment backend-api` configuration for future reference
+
+INCIDENT DATA:
+
+Incident ID:
+alert-auto-001
+
+Timestamp:
+2026-05-09 08:01:03 UTC
+
+Incident Type:
+OOM
+
+Severity:
+P1
+
+Remediation Plan:
+kubectl top pods -n default; kubectl describe pod -l app=backend-api; kubectl set resources deployment backend-api --limits=memory=512Mi; kubectl rollout restart deployment/backend-api
+
+Execution Results:
+kubectl top pods -n default->success; kubectl describe pod -l app=backend-api->success; kubectl set resources deployment backend-api --limits=memory=512Mi->success; kubectl rollout restart deployment/backend-api->success
+
+Healthy After Fix:
+True
+
+Override Action:
+approve

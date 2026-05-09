@@ -4,12 +4,9 @@ import { getPostmortem, getStatus } from '../api'
 
 export default function PostmortemPanel({ workflowId }: { workflowId: string | null }) {
   const [content, setContent] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [note, setNote] = useState('')
 
   useEffect(() => {
     setContent(null)
-    setNote('')
     if (!workflowId) return
 
     let cancelled = false
@@ -18,18 +15,12 @@ export default function PostmortemPanel({ workflowId }: { workflowId: string | n
       try {
         const s = await getStatus(workflowId)
         if (cancelled) return
-        if (s.status !== 'COMPLETED') return   // not ready yet
+        if (s.status !== 'COMPLETED') return
 
-        setLoading(true)
         const pm = await getPostmortem(workflowId)
-        if (!cancelled) {
-          setContent(pm.content)
-          setNote((pm as any).note ?? '')
-        }
+        if (!cancelled) setContent(pm.content)
       } catch {
-        // postmortem may not exist yet — retry on next tick
-      } finally {
-        if (!cancelled) setLoading(false)
+        // Will retry on next tick
       }
     }
 
@@ -39,42 +30,20 @@ export default function PostmortemPanel({ workflowId }: { workflowId: string | n
   }, [workflowId])
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0e131f] overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-900/40">
-        <span className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-          <span className="text-amber-400">◈</span> Postmortem
-        </span>
-        {note && <span className="text-xs text-slate-600">{note}</span>}
+    <div className="border border-gray-300 bg-white">
+      <div className="p-2 border-b border-gray-300 font-bold bg-gray-100 flex justify-between">
+        <span>Postmortem</span>
       </div>
 
-      <div className="max-h-96 overflow-y-auto">
-        {!workflowId && (
-          <Empty text="No incident selected" />
-        )}
-        {workflowId && !content && !loading && (
-          <Empty text="Postmortem generated after workflow completes" />
-        )}
-        {loading && !content && (
-          <Empty text="Generating postmortem…" pulse />
-        )}
+      <div className="max-h-96 overflow-y-auto p-4">
+        {!workflowId && <div className="text-gray-500">No incident selected</div>}
+        {workflowId && !content && <div className="text-gray-500">Postmortem generated after workflow completes...</div>}
         {content && (
-          <div className="prose prose-invert prose-sm max-w-none p-5
-                          prose-headings:text-slate-200 prose-headings:font-semibold
-                          prose-p:text-slate-400 prose-li:text-slate-400
-                          prose-code:text-emerald-300 prose-code:bg-slate-900
-                          prose-strong:text-slate-200">
+          <div className="prose prose-sm max-w-none">
             <ReactMarkdown>{content}</ReactMarkdown>
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-function Empty({ text, pulse }: { text: string; pulse?: boolean }) {
-  return (
-    <div className={`p-8 text-center text-sm text-slate-700 ${pulse ? 'animate-pulse' : ''}`}>
-      {text}
     </div>
   )
 }

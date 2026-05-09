@@ -1,1 +1,0 @@
-echo "say hi to yo mama for me"

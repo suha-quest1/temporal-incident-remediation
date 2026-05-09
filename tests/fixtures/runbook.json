@@ -1,0 +1,30 @@
+{
+  "OOM": {
+    "tags": ["oom", "memory", "kubernetes", "oomkilled"],
+    "solution": [
+      "kubectl top pods -n default",
+      "kubectl rollout restart deployment/backend-api"
+    ]
+  },
+  "networking": {
+    "tags": ["network", "connection", "timeout", "dns", "ingress", "latency"],
+    "solution": [
+      "kubectl get svc -n default",
+      "kubectl rollout restart deployment/backend-api"
+    ]
+  },
+  "database": {
+    "tags": ["database", "db", "postgres", "mysql", "deadlock", "connectivity"],
+    "solution": [
+      "kubectl get pods -l app=postgres",
+      "kubectl rollout restart deployment/postgres"
+    ]
+  },
+  "disk": {
+    "tags": ["disk", "storage", "space", "volume", "pvc", "node"],
+    "solution": [
+      "kubectl get pvc -n default",
+      "kubectl describe pvc backend-pvc"
+    ]
+  }
+}
