@@ -1,5 +1,5 @@
 # DevOps: Autonomous Incident Triage & Remediation Orchestrator
-## Use Case: 2
+
 
 This project is an autonomous Dev-Ops system that logs incidents and automatically triggers response workflows for it. 
 
