@@ -14,6 +14,11 @@ docker compose up --build
 ```
 http://localhost:5173
 ```
+## To view Temporal workflow monitoring UI:
+```
+http://localhost:8081
+```
+
 ## To monitor using Swagger UI:
 ```
 http://localhost:8000/docs
