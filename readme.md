@@ -25,6 +25,14 @@ http://localhost:8081
 http://localhost:8000/docs
 ```
 
+### Environment Variables
+
+This project uses the Groq API for LLM-powered incident classification, remediation planning, and postmortem generation.
+
+Change the example `.env` file in the project root and add your own API key:
+
+You can generate an API key from:
+https://console.groq.com/keys
 
 
 
