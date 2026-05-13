@@ -18,15 +18,23 @@ MODEL = "llama-3.1-8b-instant"
 
 @activity.defn(name="ClassifyIncident")
 async def ClassifyIncident(err_msg: str) -> dict:
-    logger.info("[ClassifyIncident] Classifying: %s", err_msg)
+    logger.info("[ClassifyIncident] raw input: %s", err_msg)
 
     prompt = (
-        "You are a DevOps incident classifier.\n"
-        "Return ONLY a JSON object with exactly two keys: incident_type and severity.\n"
-        'incident_type must be one of: "OOM", "networking", "database", "disk"\n'
-        'severity must be one of: "P1", "P2", "P3"\n'
-        'Example: {"incident_type": "OOM", "severity": "P1"}\n\n'
-        f"Incident message: {err_msg[:300]}"
+        "You are a DevOps incident classifier. Classify the incident message below.\n\n"
+        "Return ONLY a valid JSON object with exactly two keys: incident_type and severity.\n\n"
+        "incident_type rules:\n"
+        '  - "OOM"        → keywords: OOMKilled, memory limit, out of memory, heap, container killed\n'
+        '  - "database"   → keywords: postgres, mysql, connection timeout, max_connections, deadlock, db\n'
+        '  - "networking" → keywords: connection refused, upstream, ingress, DNS, network, unreachable, timeout\n'
+        '  - "disk"       → keywords: disk pressure, no space left, PVC, volume, storage, 9x% used\n'
+        "  Use the type whose keywords best match. If none match, still pick the closest one.\n\n"
+        "severity rules:\n"
+        '  - "P1" → service is completely down, data loss risk, or customer-facing outage\n'
+        '  - "P2" → service degraded, high error rate, approaching limits\n'
+        '  - "P3" → warning-level, non-urgent, informational\n\n'
+        'Example output: {"incident_type": "OOM", "severity": "P1"}\n\n'
+        f"Incident message: {err_msg[:400]}"
     )
 
     logger.info("[Groq] ClassifyIncident: sending request")
@@ -40,13 +48,28 @@ async def ClassifyIncident(err_msg: str) -> dict:
             response_format={"type": "json_object"},
         )
         raw = response.choices[0].message.content
-        logger.info("[Groq] ClassifyIncident raw: %s", raw)
+        logger.info("[Groq] ClassifyIncident raw response: %s", raw)
         result = json.loads(raw)
-        if "incident_type" not in result or "severity" not in result:
-            raise ValueError(f"Missing keys in: {result}")
+
+        incident_type = result.get("incident_type")
+        severity = result.get("severity")
+
+        valid_types = {"OOM", "networking", "database", "disk"}
+        valid_severities = {"P1", "P2", "P3"}
+
+        if incident_type not in valid_types or severity not in valid_severities:
+            logger.warning(
+                "[ClassifyIncident] invalid response (will retry): incident_type=%r severity=%r — raw: %s",
+                incident_type, severity, raw,
+            )
+            raise ValueError(
+                f"LLM returned out-of-vocab classification: incident_type={incident_type!r} severity={severity!r}"
+            )
+
+        logger.info("[ClassifyIncident] result: incident_type=%s severity=%s", incident_type, severity)
         return result
     except Exception as e:
-        logger.error("[Groq] ClassifyIncident failed: %s", e)
+        logger.error("[ClassifyIncident] FAILED — no fallback, re-raising. error=%s", e)
         raise
 
 
