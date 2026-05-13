@@ -48,7 +48,7 @@ def groq_classify_mock():
 @pytest.fixture
 def groq_plan_mock():
     return make_groq_mock(
-        '["kubectl get pods", "kubectl rollout restart deployment/api"]'
+        '{"commands": ["kubectl get pods", "kubectl rollout restart deployment/api"]}'
     )
 
 

@@ -13,7 +13,7 @@ docker compose up --build
 ```
 ## Access the UI at:
 ```
-http://localhost:5173
+http://localhost:3000
 ```
 ## To view Temporal workflow monitoring UI:
 ```

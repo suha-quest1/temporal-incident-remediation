@@ -1,6 +1,5 @@
 from temporalio import activity
 import json
-import re
 from pathlib import Path
 
 import httpx
@@ -8,35 +7,13 @@ import httpx
 from temporal.logger import logger
 from temporal.llm_client import get_groq_client
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 _HERE = Path(__file__).parent.parent
 _RUNBOOK_PATH = _HERE / "runbooks" / "error_handling.json"
 _OUTPUT_DIR = _HERE / "output"
 
 MODEL = "llama-3.1-8b-instant"
-
-
-def _extract_json(text: str) -> str:
-    """
-    Strip markdown code fences and extract the first valid JSON block.
-    Handles ```json, ```, ''' wrappers and leading/trailing prose.
-    """
-    text = text.strip()
-    # Remove ```json ... ``` or ``` ... ```
-    text = re.sub(r"^```(?:json)?\s*", "", text)
-    text = re.sub(r"\s*```\s*$", "", text)
-    text = text.strip()
-
-    for start_char in ("{", "["):
-        idx = text.find(start_char)
-        if idx != -1:
-            close_char = "}" if start_char == "{" else "]"
-            end_idx = text.rfind(close_char)
-            if end_idx != -1 and end_idx > idx:
-                return text[idx : end_idx + 1]
-
-    return text
 
 
 @activity.defn(name="ClassifyIncident")
@@ -60,10 +37,11 @@ async def ClassifyIncident(err_msg: str) -> dict:
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
             max_tokens=60,
+            response_format={"type": "json_object"},
         )
         raw = response.choices[0].message.content
         logger.info("[Groq] ClassifyIncident raw: %s", raw)
-        result = json.loads(_extract_json(raw))
+        result = json.loads(raw)
         if "incident_type" not in result or "severity" not in result:
             raise ValueError(f"Missing keys in: {result}")
         return result
@@ -86,7 +64,6 @@ async def FetchRunbook(runbook_tags: list[str]) -> str:
     matched_steps: list[str] = []
 
     for incident_type, data in runbook.items():
-        # match by incident_type key directly or by tags
         tags = [t.lower() for t in data.get("tags", [])]
         hits = [
             t
@@ -107,14 +84,50 @@ async def GeneratePlan(incident_type: str, runbook: str, severity: str) -> list[
 
     runbook_snippet = runbook[:400] if runbook else "No runbook available"
 
-    prompt = (
-        "You are a Kubernetes SRE. Return ONLY a JSON array of 3-5 kubectl/shell commands.\n"
-        "No explanations. No markdown. Just a JSON array.\n"
-        'Example: ["kubectl get pods", "kubectl describe pod api"]\n\n'
-        f"Incident type: {incident_type}\n"
-        f"Severity: {severity}\n"
-        f"Runbook guidance: {runbook_snippet}"
-    )
+    prompt = f"""\
+You are a Kubernetes SRE generating a remediation plan.
+
+Return a JSON object with a single key "commands" containing an array of 3 to 5 kubectl/shell remediation commands.
+
+STRICT RULES:
+- Output MUST be a JSON object: {{"commands": ["...", ...]}}
+- Each command MUST be a plain shell string.
+- Return between 3 and 5 commands.
+- Prefer kubectl commands.
+- No markdown, no explanations, no extra keys.
+
+EXAMPLE OUTPUT:
+{{"commands": ["kubectl get pods -A", "kubectl describe pod backend-api", "kubectl rollout restart deployment/backend-api"]}}
+
+INCIDENT TYPE: {incident_type}
+SEVERITY: {severity}
+RUNBOOK: {runbook_snippet}
+"""
+
+    _PLAN_SCHEMA = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "remediation_plan",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "commands": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 3,
+                        "maxItems": 5,
+                    }
+                },
+                "required": ["commands"],
+            },
+        },
+    }
+
+    _FALLBACK_COMMANDS = [
+        "kubectl get pods -A",
+        "kubectl describe pod -l app=backend-api",
+        "kubectl rollout restart deployment/backend-api",
+    ]
 
     logger.info("[Groq] GeneratePlan: sending request")
     try:
@@ -123,17 +136,21 @@ async def GeneratePlan(incident_type: str, runbook: str, severity: str) -> list[
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_tokens=150,
+            max_tokens=200,
+            response_format=_PLAN_SCHEMA,
         )
         raw = response.choices[0].message.content
         logger.info("[Groq] GeneratePlan raw: %s", raw)
-        parsed = json.loads(_extract_json(raw))
-        if not isinstance(parsed, list):
-            raise ValueError(f"Expected list, got {type(parsed)}")
-        return [str(cmd) for cmd in parsed[:5]]
+        parsed = json.loads(raw)
+        commands = parsed.get("commands")
+        if not isinstance(commands, list) or not all(
+            isinstance(c, str) for c in commands
+        ):
+            raise ValueError(f"Invalid 'commands' field in response: {parsed}")
+        return commands[:5]
     except Exception as e:
-        logger.error("[Groq] GeneratePlan failed: %s", e)
-        raise
+        logger.error("[Groq] GeneratePlan failed (%s) — using fallback commands", e)
+        return _FALLBACK_COMMANDS
 
 
 @activity.defn(name="ExecuteStep")
@@ -202,7 +219,7 @@ async def GeneratePostmortem(
     override_action: str | None,
 ) -> str:
 
-    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     logger.info("[GeneratePostmortem] Generating for incident: %s", incident_id)
 

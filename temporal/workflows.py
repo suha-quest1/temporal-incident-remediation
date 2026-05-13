@@ -66,13 +66,15 @@ class IncidentWorkflow:
 
             step_results.append(result)
 
-        workflow.logger.info("Waiting for human override (up to 30 mins)")
+        workflow.logger.info("[workflow] waiting for human override...")
         try:
             await workflow.wait_condition(
                 lambda: self.override_action is not None,
                 timeout=timedelta(minutes=30),
             )
             override_received = True
+            # Log signal reception immediately when override is set
+            workflow.logger.info(f"[signal] human override received: action={self.override_action}")
         except asyncio.TimeoutError:
             override_received = False
 

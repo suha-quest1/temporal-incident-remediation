@@ -109,10 +109,10 @@ services:
       - api-server
       - worker
 
-  dashboard:
+  ui:
     build:
       context: .
-      dockerfile: dashboard/Dockerfile
+      dockerfile: ui/Dockerfile
     ports: ["3000:80"]
     depends_on:
       - api-server

@@ -1,46 +1,38 @@
 # Incident Report — alert-auto-001
 
-Date: 2026-05-09 08:01:03 UTC
+Date: 2026-05-13 01:53:08 UTC
 
 Severity: P1
 Issue Type: OOM
 
 ## Actions
-- Run `kubectl top pods -n default` to identify resource utilization
-- Run `kubectl describe pod -l app=backend-api` to gather pod information
-- Update `deployment backend-api` resource limits to 512Mi
-- Restart `deployment backend-api` using `kubectl rollout restart deployment/backend-api`
+- Run `kubectl get pods -A`
+- Run `kubectl describe pod -l app=backend-api`
+- Run `kubectl rollout restart deployment/backend-api`
 
 ## Result
-- OOM (Out of Memory) error resolved
-- `deployment backend-api` restarted successfully
+- `kubectl get pods -A` returned success
+- `kubectl describe pod -l app=backend-api` returned success
+- `kubectl rollout restart deployment/backend-api` returned success
 
 ## Follow-Up
-- Monitor resource utilization for `deployment backend-api`
-- Review `deployment backend-api` configuration for future reference
+- Verify backend-api deployment status
+- Monitor system for similar issues
 
 INCIDENT DATA:
 
-Incident ID:
-alert-auto-001
+Incident ID: alert-auto-001
 
-Timestamp:
-2026-05-09 08:01:03 UTC
+Timestamp: 2026-05-13 01:53:08 UTC
 
-Incident Type:
-OOM
+Incident Type: OOM
 
-Severity:
-P1
+Severity: P1
 
-Remediation Plan:
-kubectl top pods -n default; kubectl describe pod -l app=backend-api; kubectl set resources deployment backend-api --limits=memory=512Mi; kubectl rollout restart deployment/backend-api
+Remediation Plan: kubectl get pods -A; kubectl describe pod -l app=backend-api; kubectl rollout restart deployment/backend-api
 
-Execution Results:
-kubectl top pods -n default->success; kubectl describe pod -l app=backend-api->success; kubectl set resources deployment backend-api --limits=memory=512Mi->success; kubectl rollout restart deployment/backend-api->success
+Execution Results: kubectl get pods -A->success; kubectl describe pod -l app=backend-api->success; kubectl rollout restart deployment/backend-api->success
 
-Healthy After Fix:
-True
+Healthy After Fix: True
 
-Override Action:
-approve
+Override Action: none
