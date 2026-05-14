@@ -18,9 +18,12 @@ A 30-minute intervention window allows on-call engineers to approve or rollback 
 <img width="600" height="800" alt="workflow_dg_2" src="https://github.com/user-attachments/assets/059fe906-572d-4fa5-9db8-1f92d1098dce" />
 
 ## Demo
+
 Watch the full demo video here: [Autonomous Incident Remediation System](https://drive.google.com/file/d/1sSlQd0I5S5IfMwqQsgscBjkZliwwiiIs/view?usp=drive_link)
 
-### Environment Variables
+---
+### Environment Variables  
+
 
 This project uses the Groq API for LLM-powered incident classification, remediation planning, and postmortem generation.
 
