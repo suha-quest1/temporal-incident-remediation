@@ -6,8 +6,7 @@ app = FastAPI(title="Mock Kubernetes API")
 class CommandRequest(BaseModel):
     command: str
 
-# Commands that contain these strings will simulate transient failure
-# (but NOT "restart" — rollout restarts are valid remediation!)
+#Commands that contain these strings== failure
 FAIL_PATTERNS = ["delete --force", "drain --force"]
 
 @app.post("/execute")

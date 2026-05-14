@@ -13,8 +13,8 @@ _HERE = Path(__file__).parent.parent
 _RUNBOOK_PATH = _HERE / "runbooks" / "error_handling.json"
 _OUTPUT_DIR = _HERE / "output"
 
-MODEL = "llama-3.1-8b-instant"
-
+#MODEL = "llama-3.1-8b-instant" 
+MODEL= "openai/gpt-oss-20b"
 
 @activity.defn(name="ClassifyIncident")
 async def ClassifyIncident(err_msg: str) -> dict:
