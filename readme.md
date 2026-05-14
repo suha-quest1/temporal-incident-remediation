@@ -38,16 +38,16 @@ Go to directory root:
 ```
 docker compose up --build
 ```
-## Access the UI at:
+Access the UI at:
 ```
 http://localhost:3000
 ```
-## To view Temporal workflow monitoring UI:
+To view Temporal workflow monitoring UI:
 ```
 http://localhost:8081
 ```
 
-## To monitor using Swagger UI:
+To monitor using Swagger UI:
 ```
 http://localhost:8000/docs
 ```
